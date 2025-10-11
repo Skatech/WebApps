@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
+    <title>{TITLE}</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Consolas;
+            font-size: 1em;
+            letter-spacing: -0.04em;
+        }
+        div.container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-width: 25em;
+            margin: 0 auto;
+            padding: 0 0.5em;
+        }
+        h1 {
+            margin-bottom: 0;
+            text-align: center;
+            font-size: 2.5rem;
+        }
+        div.groups-container {
+            margin: 1em auto;
+            width: fit-content;
+        }
+        input[type=text] {
+            font-size: 1em;
+            padding: 0.1em 0.1em;
+            margin: 0.5em 0;
+            width: 70%;
+        }
+        input[type=submit] {
+            font-size: 1em;
+            padding: 0.1em 1em;
+            margin: 0.5em 0;
+            float: right;
+        }
+        div.link-container {
+            margin: 1em 0;
+        }
+        a:link, a:visited, a:hover, a:active {
+            text-decoration: none;
+            color: unset;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        a.nonplayable {
+            color: red;
+        }
+        /* input[type=checkbox] {
+            cursor: pointer;
+            position: relative;
+            width: 1.75em;
+            height: 1em;
+            appearance: none;
+            background: #f1f1f1; 
+            outline: 1px solid #cacaca;
+            border-radius: 0.5em;
+            box-shadow: 0 0 0.37em rgba(0, 0, 0, 0.3);
+            transition: 0.3s;
+        }
+        input[type=checkbox]:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1em;
+            height: 1em;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 0.37em 0.37em rgba(0, 0, 0, 0.3);
+            transition: 0.3s;
+        }
+        input:checked[type=checkbox] {
+            background: #03a9f4;
+        }
+        input:checked[type=checkbox]:before {
+            left: 0.75em;
+        } */
+        label {
+            vertical-align: top;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{TITLE}</h1>
+        <form method="post" action="/">
+            <div class="groups-container">
+                {GROUPS}
+            </div>
+            <div>
+                <input type="text" name="filter" value="{FILTER}" placeholder="File name or part" required />
+                <input type="submit" value="Search" />
+            <div>
+        </form>
+        <div class="link-container">{FILES}</div>
+    </div>
+</body>
+</html>
