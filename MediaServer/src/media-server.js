@@ -32,7 +32,7 @@ class FileData {
         this.fileindex = fileindex
         this.fullpath = fullpath
         this.filename = path.basename(this.fullpath)
-        this.findpath = path.relative(rootdir, this.fullpath).toLowerCase()
+        this.findpath = path.relative(rootdir, this.fullpath)
         this.filetype = FileType.find(this.findpath)
     }
 }
@@ -99,13 +99,15 @@ class SessionData {
 
     /** @param {string} newfilter @param {FileGroup[]} newgroups */
     updateFilter(newfilter, newgroups) {
-        this.groups = newgroups
         this.filter = newfilter
+        this.groups = newgroups
         this.filtered.length = 0
         if (this.filter) {
+            const r = new RegExp(this.filter.replace(/[.*+?^${}()|[\]\\]/g,
+                    '\\$&').replaceAll("\\?", ".").replaceAll("\\*", ".*"), "i")
             for (let group of this.groups) {
                 for (let file of group.files) {
-                    if (file.findpath.includes(this.filter))
+                    if (r.test(file.findpath))
                         this.filtered.push(file)
                 }
             }
@@ -142,7 +144,7 @@ function streamFile(req, res, filedata) {
 /** @param {string|undefined} str @returns {Object.<string, string>} */
 function decodeArgumentString(str) {
     const args = {}
-    for (let p of (str ?? "").matchAll(/([^=]+)=([^&]*)&?/g))
+    for (let p of (str ?? "").matchAll(/([\w-]+)=([^&\r\n]*)[&\r\n]*/g))
         args[p[1]] = p[2]
     return args
 }
@@ -174,7 +176,7 @@ function handleRequest (req, res) {
 
     if (url === "/" && req.method === "GET") {
         const html = indexPageTemplate.replaceAll("{TITLE}", title)
-            .replace("{FILTER}", session.filter)
+            .replace("{FILTER}", session.filter.replaceAll("\"", "&quot;"))
             .replace("{GROUPS}", FileGroup.All.map((fg, ix) =>
                 `<div><input type="checkbox" name="filegroup${ix}"${session.groups.includes(fg) ? " checked" : ""} /><label> ${fg.name} (${fg.files.length} files)</label></div>`).join("\n"))
             .replace("{FILES}", session.filtered.length < 1 ? "No files found" : session.filtered.map((fd, ix) =>
@@ -183,12 +185,12 @@ function handleRequest (req, res) {
     }
     else if (url === "/" && req.method === "POST") {
         let body = ""
-        const tmr = setTimeout(() => reject(body), 250)
+        const tmr = setTimeout(() => reject(), 250)
         req.on("data", ch => body += ch.toString())
         req.on("end", () => {
             clearTimeout(tmr)
             const args = decodeArgumentString(decodeURIComponent(body))
-            const filter = args?.filter.toLowerCase().replaceAll("+", " ") ?? session.filter
+            const filter = args?.filter ?? session.filter
             const groups = FileGroup.All.filter((fg, ix) => args["filegroup" + ix] ? true : false)
             session.updateFilter(filter, groups)
             res.writeHead(301, { "Location": "/" }).end()

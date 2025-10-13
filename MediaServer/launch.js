@@ -1,5 +1,5 @@
 "use strict"
-const ms = require("./media-server.js")
+const ms = require("./src/media-server.js")
 
 ms.createGroup("Music", ["D:/Media/Music", "//MyServer/Shared/Music"])
 ms.createGroup("Clips", ["D:/Media/Video/Clips"], true)
