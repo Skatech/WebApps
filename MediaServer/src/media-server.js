@@ -103,8 +103,9 @@ class SessionData {
         this.groups = newgroups
         this.filtered.length = 0
         if (this.filter) {
-            const r = new RegExp(this.filter.replace(/[.*+?^${}()|[\]\\]/g,
-                    "\\$&").replaceAll("\\?", ".").replaceAll("\\*", ".*"), "i")
+            const r = new RegExp(
+                this.filter.replace(/[\u0000-\u001F\u007F-\u009F\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, "")
+                    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replaceAll("\\?", ".").replaceAll("\\*", ".*"), "i")
             for (let group of this.groups) {
                 for (let file of group.files) {
                     if (r.test(file.findpath))
@@ -180,7 +181,7 @@ function handleRequest (req, res) {
             .replace("{GROUPS}", FileGroup.All.map((fg, ix) =>
                 `<div><input type="checkbox" name="filegroup${ix}"${session.groups.includes(fg) ? " checked" : ""} /><label> ${fg.name} (${fg.files.length} files)</label></div>`).join("\n"))
             .replace("{FILES}", session.filtered.length < 1 ? "No files found" : session.filtered.map((fd, ix) =>
-                `<a ${fd.filetype.playable ? "" : "class=\"nonplayable\" "}href="/stream${ix}">${fd.filename}</a><br>`).join("\n"))
+                `<a ${fd.filetype.playable ? "" : "class=\"nonplayable\" "}href="/stream${ix}">&bull; ${fd.filename}</a><br>`).join("\n"))
             res.writeHead(200, { "Accept-Ranges": "bytes" }).end(html)
     }
     else if (url === "/" && req.method === "POST") {
