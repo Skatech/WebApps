@@ -26,21 +26,31 @@
             text-align: center;
             font-size: 2.5rem;
         }
+        h4 {
+            text-align: center;  
+            margin: 1em 0;
+        }
         div.groups-container {
             margin: 1em auto;
             width: fit-content;
         }
+        label {
+            vertical-align: top;
+        }
+        hr {
+            border-top: 0;
+        }
         input[type=text] {
             font-size: 1em;
             padding: 0.1em 0.1em;
-            margin: 0.5em 0;
-            width: 70%;
+            margin: 0;
+            width: calc(100% - 6em);
         }
         input[type=submit] {
-            font-size: 1em;
-            padding: 0.1em 1em;
+            width: 5em;
             margin: 0.5em 0;
-            float: right;
+            padding: 0.1em 1em;
+            font-size: 1em;
         }
         div.link-container {
             margin: 1em 0;
@@ -55,7 +65,7 @@
         a.nonplayable {
             color: red;
         }
-        /* input[type=checkbox] {
+        /* input.slider[type=checkbox] {
             cursor: pointer;
             position: relative;
             width: 1.75em;
@@ -67,7 +77,7 @@
             box-shadow: 0 0 0.37em rgba(0, 0, 0, 0.3);
             transition: 0.3s;
         }
-        input[type=checkbox]:before {
+        input.slider[type=checkbox]:before {
             content: '';
             position: absolute;
             top: 0;
@@ -79,15 +89,12 @@
             box-shadow: 0 0.37em 0.37em rgba(0, 0, 0, 0.3);
             transition: 0.3s;
         }
-        input:checked[type=checkbox] {
+        input.slider:checked[type=checkbox] {
             background: #03a9f4;
         }
-        input:checked[type=checkbox]:before {
+        input.slider:checked[type=checkbox]:before {
             left: 0.75em;
         } */
-        label {
-            vertical-align: top;
-        }
     </style>
 </head>
 <body>
@@ -95,14 +102,20 @@
         <h1>{TITLE}</h1>
         <form method="post" action="/" enctype="text/plain">
             <div class="groups-container">
+                <input type="checkbox" name="shownonplayable" {SHOWNP}/><label> Show non-playable</label>
+                <input type="checkbox" name="plancacheupdate" {PCACHE}/><label> Plan cache update</label>
+                <hr>
+            </div>
+            <div class="groups-container">
                 {GROUPS}
             </div>
             <div>
-                <input type="text" name="filter" value="{FILTER}" placeholder="File name or part" required />
+                <input type="text" name="filter" value="{FILTER}" placeholder="File name part or wildcard" required />
                 <input type="submit" value="Search" />
             <div>
         </form>
         <div class="link-container">
+            <h4>{FOUND}</h4>
             {FILES}
         </div>
     </div>

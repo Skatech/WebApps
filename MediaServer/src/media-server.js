@@ -1,6 +1,8 @@
 const path = require("path"), fs = require("fs"),
     http = require("http"), crypto = require("crypto")
 
+const indexPageTemplate = fs.readFileSync("./templates/index.html", "utf-8")
+
 class FileType {
     /** @param {string} extension @param {string} mimetype @param {boolean} playable */
     constructor(extension, mimetype, playable = true) {
@@ -26,29 +28,32 @@ class FileType {
 }
 
 class FileData {
-    /** @param {FileGroup} filegroup @param {number} fileindex @param {string} fullpath @param {string} rootdir */
-    constructor(filegroup, fileindex, fullpath, rootdir) {
+    /** @param {FileGroup} filegroup @param {string} fullpath @param {string} rootdir */
+    constructor(filegroup, fullpath, rootdir) {
         this.filegroup = filegroup
-        this.fileindex = fileindex
         this.fullpath = fullpath
         this.filename = path.basename(this.fullpath)
         this.findpath = path.relative(rootdir, this.fullpath)
         this.filetype = FileType.find(this.findpath)
+        this.filecode = crypto.createHash("MD5").update(this.fullpath).digest("hex").substring(0, 16)
     }
 }
 
 class FileGroup {
-    /** @type {FileData[]} */ files = []
+    /** @type {Object.<string, FileData>} */ files = {}
+    /** @type {number} */ length = 0
 
     /** @param {string} name @param {boolean} enabled @param {string[]} roots */
     constructor(name, enabled, roots) {
         this.name = name
+        this.code = crypto.createHash("MD5").update(this.name).digest("hex").substring(0, 8)
         this.enabled = enabled
         this.roots = roots
     }
 
     /** @type {FileGroup[]} */ static All = []
     static FilesTotal = 0
+    static LoadDate = 0
 
     static loadAll() {
         /** @param {string} dir @param {undefined | string[]} files @return {string[]} */
@@ -68,20 +73,30 @@ class FileGroup {
         }
 
         for (let group of FileGroup.All) {
+            group.length = 0
+            for(let fc in group.files) {
+                delete group.files[fc]
+            }
             for (let root of group.roots) {
-                for (let fd of getAllFiles(root).map(fp => new FileData(group, -1, fp, root)).filter(fd => fd.filetype)) {
-                    fd.fileindex = group.files.length
-                    group.files.push(fd)
+                for (let fd of getAllFiles(root).map(fp => new FileData(group, fp, root)).filter(fd => fd.filetype)) {
+                    group.files[fd.filecode] = fd
+                    group.length++
                 }
             }
-            this.FilesTotal += group.files.length
+            FileGroup.FilesTotal += group.length
         }
+        FileGroup.LoadDate = Date.now()
+    }
+
+    static get CacheUpdateAvailable() {
+        return Date.now() - FileGroup.LoadDate > 5 * 60000;
     }
 }
 
 class SessionData {
     /** @type {FileData[]} */ filtered = []
     /** @type {string} */ filter = ""
+    /** @type {boolean} */ shownp = false
 
     /** @param {string} sessionid */
     constructor(sessionid) {
@@ -97,19 +112,21 @@ class SessionData {
             ?? (SessionData.All[sessionid] = new SessionData(sessionid))
     }
 
-    /** @param {string} newfilter @param {FileGroup[]} newgroups */
-    updateFilter(newfilter, newgroups) {
+    /** @param {boolean} newshownp @param {string} newfilter @param {FileGroup[]} newgroups */
+    updateFilter(newshownp, newfilter, newgroups) {
+        this.shownp = newshownp
         this.filter = newfilter
         this.groups = newgroups
         this.filtered.length = 0
         if (this.filter) {
-            const r = new RegExp(
+            const regex = new RegExp(
                 this.filter.replace(/[\u0000-\u001F\u007F-\u009F\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, "")
                     .replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replaceAll("\\?", ".").replaceAll("\\*", ".*"), "i")
             for (let group of this.groups) {
-                for (let file of group.files) {
-                    if (r.test(file.findpath))
-                        this.filtered.push(file)
+                for(let fc in group.files) {
+                    const fd = group.files[fc]
+                    if ((this.shownp || fd.filetype.playable) && regex.test(fd.findpath))
+                        this.filtered.push(fd)
                 }
             }
         }
@@ -175,43 +192,55 @@ function handleRequest (req, res) {
     const sessid = provideSessionID(req, res)
     const session = SessionData.findOrCreate(sessid)
 
-    if (url === "/" && req.method === "GET") {
-        const html = indexPageTemplate.replaceAll("{TITLE}", title)
-            .replace("{FILTER}", session.filter.replaceAll("\"", "&quot;"))
-            .replace("{GROUPS}", FileGroup.All.map((fg, ix) =>
-                `<div><input type="checkbox" name="filegroup${ix}"${session.groups.includes(fg) ? " checked" : ""} /><label> ${fg.name} (${fg.files.length} files)</label></div>`).join("\n"))
-            .replace("{FILES}", session.filtered.length < 1 ? "No files found" : session.filtered.map((fd, ix) =>
-                `<a ${fd.filetype.playable ? "" : "class=\"nonplayable\" "}href="/stream${ix}">&bull; ${fd.filename}</a><br>`).join("\n"))
-            res.writeHead(200, { "Accept-Ranges": "bytes" }).end(html)
-    }
-    else if (url === "/" && req.method === "POST") {
+    if (url === "/" && req.method === "POST") {
         let body = ""
         const tmr = setTimeout(() => reject(), 250)
         req.on("data", ch => body += ch.toString())
         req.on("end", () => {
             clearTimeout(tmr)
             const args = decodeArgumentString(decodeURIComponent(body))
+            if (args?.plancacheupdate == "on" && FileGroup.CacheUpdateAvailable) {
+                console.log("Caching files...")
+                FileGroup.loadAll()
+                console.log(`Files cached: ${FileGroup.FilesTotal}`)
+            }
+            const shownp = args?.shownonplayable == "on"
             const filter = args?.filter ?? session.filter
-            const groups = FileGroup.All.filter((fg, ix) => args["filegroup" + ix] ? true : false)
-            session.updateFilter(filter, groups)
+            const groups = FileGroup.All.filter((fg, ix) => args["filegroup" + ix] == "on")
+            session.updateFilter(shownp, filter, groups)
             res.writeHead(301, { "Location": "/" }).end()
         })
     }
-    else if (url.startsWith("/stream") && req.method === "GET") {
-        const i = parseInt(url.substring(7))
-        if (session.filtered.length > i) {
-            const filedata = session.filtered[i]
+    else if (url === "/" && req.method === "GET") {
+        const html = indexPageTemplate.replaceAll("{TITLE}", title)
+            .replace("{SHOWNP}", session.shownp ? "checked " : "")
+            .replace("{PCACHE}", FileGroup.CacheUpdateAvailable ? "" : "disabled ")
+            .replace("{FILTER}", session.filter.replaceAll("\"", "&quot;"))
+            .replace("{FOUND}", `${session.filtered.length > 0 ? session.filtered.length : "No"} files found`)
+            .replace("{GROUPS}", FileGroup.All.map((fg, ix) =>
+                `<div><input type="checkbox" name="filegroup${ix}"${session.groups.includes(fg) ? " checked" : ""} /><label> ${fg.name} (${fg.length} files)</label></div>`).join("\n"))
+            .replace("{FILES}", session.filtered.map(fd =>
+                `<a ${fd.filetype.playable ? "" : "class=\"nonplayable\" "}href="/stream-${fd.filegroup.code}${fd.filecode}">&bull; ${fd.filename}</a><br>`).join("\n"))
+            res.writeHead(200, { "Accept-Ranges": "bytes" }).end(html)
+    }
+    else if (url.startsWith("/stream-") && req.method === "GET") {
+        const match = url.match(/^\/stream-([a-f\d]{8})([a-f\d]{16})$/i)
+        const filedata = match ? FileGroup.All.find(fg => fg.code === match[1])?.files[match[2]] : undefined
+        if (filedata) {
             try {
                 streamFile(req, res, filedata)
                 console.log(req.socket.remoteAddress, "->", filedata.filename, req.url, req.headers?.range ?? "")
             }
             catch (err) {
+                res.writeHead(500, "Internal Server Error").end()
                 console.log(req.socket.remoteAddress, "STREAMING FILE FAILED ->", filedata.filename, req.url, err)
             }
-        }
+        } else res.writeHead(404, "Not Found").end()
     }
     else {
-        console.log(req.socket.remoteAddress, "-> Unknown url:", url)
+        res.writeHead(404, "Not Found").end()
+        if (url != "/favicon.ico")
+            console.log(req.socket.remoteAddress, "-> Unknown url:", url)
     }
 }
 
@@ -231,8 +260,6 @@ function startServer(host, port, title) {
     http.createServer(handleRequest).listen(port, host)
     console.log(`Server '${title}' running at http://${host}:${port}`)        
 }
-
-const indexPageTemplate = fs.readFileSync("./templates/index.html", "utf-8")
 
 module.exports = {
     createGroup : createGroup,
