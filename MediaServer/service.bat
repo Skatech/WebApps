@@ -12,8 +12,7 @@ if /i "%1" equ "-i" (
 	node ../ServiceLauncher/qckwinsvc.js --uninstall --name %SVC_NAME% --script %SVC_FILE%
 
 ) else (
-
 	echo %SVC_DESC:"=% utility
-	echo   -i  - install and start service
-	echo   -u  - uninstall service
+	echo   -i  - Install and start service
+	echo   -u  - Uninstall service
 )

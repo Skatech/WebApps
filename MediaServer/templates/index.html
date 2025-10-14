@@ -93,8 +93,6 @@
 <body>
     <div class="container">
         <h1>{TITLE}</h1>
-        <!-- multipart/form-data -->
-        <!-- application/x-www-form-urlencoded -->
         <form method="post" action="/" enctype="text/plain">
             <div class="groups-container">
                 {GROUPS}
@@ -104,7 +102,9 @@
                 <input type="submit" value="Search" />
             <div>
         </form>
-        <div class="link-container">{FILES}</div>
+        <div class="link-container">
+            {FILES}
+        </div>
     </div>
 </body>
 </html>

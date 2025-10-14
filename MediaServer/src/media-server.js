@@ -104,7 +104,7 @@ class SessionData {
         this.filtered.length = 0
         if (this.filter) {
             const r = new RegExp(this.filter.replace(/[.*+?^${}()|[\]\\]/g,
-                    '\\$&').replaceAll("\\?", ".").replaceAll("\\*", ".*"), "i")
+                    "\\$&").replaceAll("\\?", ".").replaceAll("\\*", ".*"), "i")
             for (let group of this.groups) {
                 for (let file of group.files) {
                     if (r.test(file.findpath))
