@@ -65,9 +65,7 @@ class FileGroup {
                 if (fs.statSync(name).isDirectory()) {
                     getAllFiles(name, files)
                 }
-                else {
-                    files.push(name)
-                }
+                else files.push(name)
             }
             return files
         }
@@ -95,7 +93,7 @@ class FileGroup {
 
 class SessionData {
     /** @type {FileData[]} */ filtered = []
-    /** @type {string} */ filter = ""
+    /** @type {string} */ filter = "*"
     /** @type {boolean} */ shownp = false
 
     /** @param {string} sessionid */
