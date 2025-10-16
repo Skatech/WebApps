@@ -1,5 +1,5 @@
 const path = require("path"), fs = require("fs"),
-    http = require("http"), crypto = require("crypto")
+    http = require("http"), crypto = require("crypto"), helpers = require("./helpers")
 
 const indexPageTemplate = fs.readFileSync("./templates/index.html", "utf-8")
 
@@ -9,11 +9,12 @@ class FileType {
         this.extension = extension
         this.mimetype = mimetype
         this.playable = playable
+        this.extregex = new RegExp(`\.(?:${this.extension.replaceAll(".", "")})$`, "i")
     }
 
-    /** @param {string} pathlow @returns {FileType | undefined} */
-    static find(pathlow) {
-        return FileType.All.find(ft => pathlow.endsWith(ft.extension))
+    /** @param {string} path @returns {FileType | undefined} */
+    static find(path) {
+        return FileType.All.find(ft => ft.extregex.test(path))
     }
 
     /** @type {FileType[]} */ static All = [
@@ -56,37 +57,36 @@ class FileGroup {
     static LoadDate = 0
 
     static loadAll() {
-        /** @param {string} dir @param {undefined | string[]} files @return {string[]} */
-        function getAllFiles (dir, files) {
-            files = files || []
-            const records = fs.readdirSync(dir)
-            for (let r in records) {
-                const name = dir + '/' + records[r]
-                if (fs.statSync(name).isDirectory()) {
-                    getAllFiles(name, files)
-                }
-                else files.push(name)
-            }
-            return files
-        }
+        FileGroup.loadAllAsync()
+            .then(function () {
+                console.log(`Files cached: ${FileGroup.FilesTotal} files in ${FileGroup.All.length} groups`)
+            })
+            .catch(function (err) {
+                console.log("Files caching error:", err)
+            })
+    }
 
+    static async loadAllAsync() {
+        const filter = helpers.createExtensionsFilter(FileType.All.map(ft => ft.extension))
         for (let group of FileGroup.All) {
-            group.length = 0
+            const groupfd = []
+            for (let root of group.roots) {
+                const files = await helpers.findFilesAsync(root, filter)
+                groupfd.push(...files.map(fp => new FileData(group, fp, root)))
+            }
+            group.length = groupfd.length
             for(let fc in group.files) {
                 delete group.files[fc]
             }
-            for (let root of group.roots) {
-                for (let fd of getAllFiles(root).map(fp => new FileData(group, fp, root)).filter(fd => fd.filetype)) {
-                    group.files[fd.filecode] = fd
-                    group.length++
-                }
+            for (let fd of groupfd) {
+                group.files[fd.filecode] = fd
             }
-            FileGroup.FilesTotal += group.length
         }
+        FileGroup.FilesTotal =  FileGroup.All.reduce((acc, fg) => acc + fg.length, 0)
         FileGroup.LoadDate = Date.now()
     }
 
-    static get CacheUpdateAvailable() {
+    static get FilesUpdateAvailable() {
         return Date.now() - FileGroup.LoadDate > 5 * 60000;
     }
 }
@@ -197,7 +197,7 @@ function handleRequest (req, res) {
         req.on("end", () => {
             clearTimeout(tmr)
             const args = decodeArgumentString(decodeURIComponent(body))
-            if (args?.plancacheupdate == "on" && FileGroup.CacheUpdateAvailable) {
+            if (args?.plancacheupdate == "on" && FileGroup.FilesUpdateAvailable) {
                 console.log("Caching files...")
                 FileGroup.loadAll()
                 console.log(`Files cached: ${FileGroup.FilesTotal}`)
@@ -212,13 +212,13 @@ function handleRequest (req, res) {
     else if (url === "/" && req.method === "GET") {
         const html = indexPageTemplate.replaceAll("{TITLE}", title)
             .replace("{SHOWNP}", session.shownp ? "checked " : "")
-            .replace("{PCACHE}", FileGroup.CacheUpdateAvailable ? "" : "disabled ")
+            .replace("{PCACHE}", FileGroup.FilesUpdateAvailable ? "" : "disabled ")
             .replace("{FILTER}", session.filter.replaceAll("\"", "&quot;"))
             .replace("{FOUND}", `${session.filtered.length > 0 ? session.filtered.length : "No"} files found`)
             .replace("{GROUPS}", FileGroup.All.map((fg, ix) =>
                 `<div><input type="checkbox" name="filegroup${ix}"${session.groups.includes(fg) ? " checked" : ""} /><label> ${fg.name} (${fg.length} files)</label></div>`).join("\n"))
             .replace("{FILES}", session.filtered.map(fd =>
-                `<a ${fd.filetype.playable ? "" : "class=\"nonplayable\" "}href="/stream-${fd.filegroup.code}${fd.filecode}">&bull; ${fd.filename}</a><br>`).join("\n"))
+                `<a ${fd.filetype.playable ? "" : "class=\"nonplayable\" "}href="/stream-${fd.filegroup.code}${fd.filecode}">&bull; ${fd.filename}</a>`).join("\n"))
             res.writeHead(200, { "Accept-Ranges": "bytes" }).end(html)
     }
     else if (url.startsWith("/stream-") && req.method === "GET") {
@@ -252,9 +252,7 @@ function startServer(host, port, title) {
     global.host = host
     global.port = port
     global.title = title
-    console.log("Caching files...")
     FileGroup.loadAll()
-    console.log(`Files cached: ${FileGroup.FilesTotal}`)
     http.createServer(handleRequest).listen(port, host)
     console.log(`Server '${title}' running at http://${host}:${port}`)        
 }

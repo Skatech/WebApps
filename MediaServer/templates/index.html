@@ -28,7 +28,7 @@
         }
         h4 {
             text-align: center;  
-            margin: 1em 0;
+            margin: 0 0 1em 0;
         }
         div.groups-container {
             margin: 1em auto;
@@ -55,46 +55,20 @@
         div.link-container {
             margin: 1em 0;
         }
-        a:link, a:visited, a:hover, a:active {
-            text-decoration: none;
+        div.link-container a {
+            display: block;
             color: unset;
+            text-decoration: none;
         }
-        a:hover {
+        div.link-container a:nth-child(even) {
+            background-color: #F0F0F0;
+        }
+        div.link-container a:hover {
             text-decoration: underline;
         }
-        a.nonplayable {
-            color: red;
+        div.link-container a.nonplayable {
+            color: #990000;
         }
-        /* input.slider[type=checkbox] {
-            cursor: pointer;
-            position: relative;
-            width: 1.75em;
-            height: 1em;
-            appearance: none;
-            background: #f1f1f1; 
-            outline: 1px solid #cacaca;
-            border-radius: 0.5em;
-            box-shadow: 0 0 0.37em rgba(0, 0, 0, 0.3);
-            transition: 0.3s;
-        }
-        input.slider[type=checkbox]:before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 1em;
-            height: 1em;
-            border-radius: 50%;
-            background: #fff;
-            box-shadow: 0 0.37em 0.37em rgba(0, 0, 0, 0.3);
-            transition: 0.3s;
-        }
-        input.slider:checked[type=checkbox] {
-            background: #03a9f4;
-        }
-        input.slider:checked[type=checkbox]:before {
-            left: 0.75em;
-        } */
     </style>
 </head>
 <body>
@@ -102,8 +76,8 @@
         <h1>{TITLE}</h1>
         <form method="post" action="/" enctype="text/plain">
             <div class="groups-container">
-                <input type="checkbox" name="shownonplayable" {SHOWNP}/><label> Show non-playable</label>
-                <input type="checkbox" name="plancacheupdate" {PCACHE}/><label> Plan cache update</label>
+                <input type="checkbox" name="shownonplayable" {SHOWNP}><label> Show non-playable</label>
+                <input type="checkbox" name="plancacheupdate" {PCACHE}><label> Plan cache update</label>
                 <hr>
             </div>
             <div class="groups-container">
@@ -112,7 +86,7 @@
             <div>
                 <input type="text" name="filter" value="{FILTER}" placeholder="File name part or wildcard" required />
                 <input type="submit" value="Search" />
-            <div>
+            </div>
         </form>
         <div class="link-container">
             <h4>{FOUND}</h4>
