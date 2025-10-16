@@ -1,3 +1,4 @@
+"use strict"
 const path = require("path"), fs = require("fs"),
     http = require("http"), crypto = require("crypto"), helpers = require("./helpers")
 
@@ -198,9 +199,8 @@ function handleRequest (req, res) {
             clearTimeout(tmr)
             const args = decodeArgumentString(decodeURIComponent(body))
             if (args?.plancacheupdate == "on" && FileGroup.FilesUpdateAvailable) {
-                console.log("Caching files...")
+                console.log(req.socket.remoteAddress, "FILES RECACHE REQUEST ACCEPTED")
                 FileGroup.loadAll()
-                console.log(`Files cached: ${FileGroup.FilesTotal}`)
             }
             const shownp = args?.shownonplayable == "on"
             const filter = args?.filter ?? session.filter
