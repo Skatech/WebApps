@@ -26,7 +26,8 @@ class FileType {
         new FileType(".flv", "video/x-flv", false),
         new FileType(".mkv", "video/x-matroska", false),
         new FileType(".mp3", "audio/mpeg"),
-        new FileType(".flac", "audio/flac")]
+        new FileType(".flac", "audio/flac"),
+        new FileType(".opus", "audio/ogg")]
 }
 
 class FileData {
@@ -133,30 +134,31 @@ class SessionData {
 }
 
 class DirectoryTracker {
+    /** @type {FileGroup} */ lastgroup
+    /** @type {string} */ lastdir
+    
     /** @param {string} format */
     constructor(format) {
-        this.lastdir = "???"
-        this.rootdir = "???"
         this.format = format
     }
 
-    /** @param {FileData} file @returns {boolean} */
-    next(file) {
-        const dirlen = Math.max(0, file.findpath.length - file.filename.length - 1)
-        if (dirlen === this.lastdir.length && file.findpath.startsWith(this.lastdir)) {
+    /** @param {FileData} fd @returns {boolean} */
+    next(fd) {
+        const dirlen = Math.max(0, fd.findpath.length - fd.filename.length - 1)
+        if (fd.filegroup === this.lastgroup && dirlen === this.lastdir.length
+                && fd.findpath.startsWith(this.lastdir)) {
             return false
         }
-        this.lastdir = file.findpath.substring(0, dirlen)
-        this.rootdir = path.basename(file.fullpath.substring(0,
-            file.fullpath.length - file.findpath.length))
+        this.lastgroup = fd.filegroup
+        this.lastdir = fd.findpath.substring(0, dirlen)
         return true
     }
 
-    /** @param {FileData} file @returns {string} */
-    nextFormat(file) {
-        return this.next(file)
+    /** @param {FileData} fd @returns {string} */
+    nextFormat(fd) {
+        return this.next(fd)
             ? this.format.replaceAll("{LASTDIR}",
-                this.lastdir ? `${this.rootdir}\\${this.lastdir}` : this.rootdir)
+                this.lastdir ? `${this.lastgroup.name}\\${this.lastdir}` : this.lastgroup.name)
             : ""
     }
 }
