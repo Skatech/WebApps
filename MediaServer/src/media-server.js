@@ -132,6 +132,35 @@ class SessionData {
     }
 }
 
+class DirectoryTracker {
+    /** @param {string} format */
+    constructor(format) {
+        this.lastdir = "???"
+        this.rootdir = "???"
+        this.format = format
+    }
+
+    /** @param {FileData} file @returns {boolean} */
+    next(file) {
+        const dirlen = Math.max(0, file.findpath.length - file.filename.length - 1)
+        if (dirlen === this.lastdir.length && file.findpath.startsWith(this.lastdir)) {
+            return false
+        }
+        this.lastdir = file.findpath.substring(0, dirlen)
+        this.rootdir = path.basename(file.fullpath.substring(0,
+            file.fullpath.length - file.findpath.length))
+        return true
+    }
+
+    /** @param {FileData} file @returns {string} */
+    nextFormat(file) {
+        return this.next(file)
+            ? this.format.replaceAll("{LASTDIR}",
+                this.lastdir ? `${this.rootdir}\\${this.lastdir}` : this.rootdir)
+            : ""
+    }
+}
+
 /** @param {http.IncomingMessage} req @param {http.ServerResponse<http.IncomingMessage>} res @param {FileData} filedata */
 function streamFile(req, res, filedata) {
     const stat = fs.statSync(filedata.fullpath)
@@ -210,15 +239,16 @@ function handleRequest (req, res) {
         })
     }
     else if (url === "/" && req.method === "GET") {
+        const dtr = new DirectoryTracker("<div>{LASTDIR}</div>\n")
         const html = indexPageTemplate.replaceAll("{TITLE}", title)
             .replace("{SHOWNP}", session.shownp ? "checked " : "")
             .replace("{PCACHE}", FileGroup.FilesUpdateAvailable ? "" : "disabled ")
             .replace("{FILTER}", session.filter.replaceAll("\"", "&quot;"))
-            .replace("{FOUND}", `${session.filtered.length > 0 ? session.filtered.length : "No"} files found`)
+            .replace("{FOUND}", `${session.filtered.length > 0 ? session.filtered.length : "No"} file${session.filtered.length == 1 ? "" : "s"} found`)
             .replace("{GROUPS}", FileGroup.All.map((fg, ix) =>
                 `<div><input type="checkbox" name="filegroup${ix}"${session.groups.includes(fg) ? " checked" : ""} /><label> ${fg.name} (${fg.length} files)</label></div>`).join("\n"))
             .replace("{FILES}", session.filtered.map(fd =>
-                `<a ${fd.filetype.playable ? "" : "class=\"nonplayable\" "}href="/stream-${fd.filegroup.code}${fd.filecode}">&bull; ${fd.filename}</a>`).join("\n"))
+                `${dtr.nextFormat(fd)}<a ${fd.filetype.playable ? "" : "class=\"nonplayable\" "}href="/stream-${fd.filegroup.code}${fd.filecode}">&bull; ${fd.filename}</a>`).join("\n"))
             res.writeHead(200, { "Accept-Ranges": "bytes" }).end(html)
     }
     else if (url.startsWith("/stream-") && req.method === "GET") {
