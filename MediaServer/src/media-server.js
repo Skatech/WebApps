@@ -2,7 +2,8 @@
 const path = require("path"), fs = require("fs"),
     http = require("http"), crypto = require("crypto"), helpers = require("./helpers")
 
-const indexPageTemplate = fs.readFileSync("./templates/index.html", "utf-8")
+// const indexPageTemplate = fs.readFileSync("./templates/index.html", "utf-8")
+/** @type {Object.<string, string>} */ const pageTemplates = {}
 
 class FileType {
     /** @param {string} extension @param {string} mimetype @param {boolean} playable */
@@ -19,13 +20,14 @@ class FileType {
     }
 
     /** @type {FileType[]} */ static All = [
-        new FileType(".mp4", "video/mp4"),
-        new FileType(".mov", "video/mov"),
+        new FileType(".mp4",  "video/mp4"),
+        new FileType(".mov",  "video/mov"),
         new FileType(".webm", "video/webm"),
-        new FileType(".avi", "video/x-msvideo", false),
-        new FileType(".flv", "video/x-flv", false),
-        new FileType(".mkv", "video/x-matroska", false),
-        new FileType(".mp3", "audio/mpeg"),
+        new FileType(".avi",  "video/x-msvideo", false),
+        new FileType(".mkv",  "video/x-matroska", false),
+        new FileType(".flv",  "video/x-flv", false),
+        new FileType(".wav",  "audio/wav", false),
+        new FileType(".mp3",  "audio/mpeg"),
         new FileType(".flac", "audio/flac"),
         new FileType(".opus", "audio/ogg")]
 }
@@ -242,7 +244,8 @@ function handleRequest (req, res) {
     }
     else if (url === "/" && req.method === "GET") {
         const dtr = new DirectoryTracker("<div>{LASTDIR}</div>\n")
-        const html = indexPageTemplate.replaceAll("{TITLE}", title)
+        // const html = indexPageTemplate.replaceAll("{TITLE}", title)
+        const html = pageTemplates["index.html"].replaceAll("{TITLE}", title)
             .replace("{SHOWNP}", session.shownp ? "checked " : "")
             .replace("{PCACHE}", FileGroup.FilesUpdateAvailable ? "" : "disabled ")
             .replace("{FILTER}", session.filter.replaceAll("\"", "&quot;"))
@@ -250,8 +253,21 @@ function handleRequest (req, res) {
             .replace("{GROUPS}", FileGroup.All.map((fg, ix) =>
                 `<div><input type="checkbox" name="filegroup${ix}"${session.groups.includes(fg) ? " checked" : ""} /><label> ${fg.name} (${fg.length} files)</label></div>`).join("\n"))
             .replace("{FILES}", session.filtered.map(fd =>
-                `${dtr.nextFormat(fd)}<a ${fd.filetype.playable ? "" : "class=\"nonplayable\" "}href="/stream-${fd.filegroup.code}${fd.filecode}">&bull; ${fd.filename}</a>`).join("\n"))
+                `${dtr.nextFormat(fd)}<a ${fd.filetype.playable ? "" : "class=\"nonplayable\" "}href="/player-${fd.filegroup.code}${fd.filecode}">&bull; ${fd.filename}</a>`).join("\n"))
             res.writeHead(200, { "Accept-Ranges": "bytes" }).end(html)
+    }
+    else if (url.startsWith("/player-") && req.method === "GET") {
+        const match = url.match(/^\/player-([a-f\d]{8})([a-f\d]{16})$/i)
+        const filedata = match ? FileGroup.All.find(fg => fg.code === match[1])?.files[match[2]] : undefined
+        if (filedata) {
+            const html = pageTemplates["player.html"]
+                .replace("{TITLE}", title + ": " + filedata.filename)
+                .replace("{TRACKNAME}", filedata.filename)
+                .replace("{MIMETYPE}", filedata.filetype.mimetype)
+                .replace("{TRACKURL}", `/stream-${filedata.filegroup.code}${filedata.filecode}`)                
+                .replaceAll("{PLAYER}", filedata.filetype.mimetype.startsWith("video") ? "video" : "audio")
+            res.writeHead(200, { "Accept-Ranges": "bytes" }).end(html)
+        }
     }
     else if (url.startsWith("/stream-") && req.method === "GET") {
         const match = url.match(/^\/stream-([a-f\d]{8})([a-f\d]{16})$/i)
@@ -274,6 +290,17 @@ function handleRequest (req, res) {
     }
 }
 
+/** Loads files with specified suffix to dictionary with keys equal to specified prefix joined with their names
+ * @param {Object.<string, string|Buffer<ArrayBuffer>} dictionary @param {fs.PathLike} directory
+ * @param {string} filesSuffix @param {string} keyPrefix - optional, by default "/"
+ * @param {string} encoding - optional, for text files can be "ascii" or "utf-8" */
+function cacheFilesSync(dictionary, directory, filesSuffix, keyPrefix = "/", encoding = undefined) {
+    for (let entry of fs.readdirSync(directory)) {
+        if (entry.endsWith(filesSuffix))
+            dictionary[keyPrefix + entry] = fs.readFileSync(path.join(directory, entry), encoding)
+    }
+}
+
 /** @param {string} name @param {string[]} roots @param {boolean} [enabled=false] */
 function createGroup(name, roots, enabled = false) {
     FileGroup.All.push(new FileGroup(name, enabled, roots))
@@ -281,6 +308,7 @@ function createGroup(name, roots, enabled = false) {
 
 /** @param {string} host @param {number} port @param {string} title */
 function startServer(host, port, title) {
+    cacheFilesSync(pageTemplates, "./templates", ".html", "", "utf-8")
     global.host = host
     global.port = port
     global.title = title
