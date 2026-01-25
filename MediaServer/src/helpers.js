@@ -4,16 +4,23 @@ const path = require("path"), fs = require("fs"), util = require("util")
 const readdirAsync = util.promisify(fs.readdir)
 const lstatAsync = util.promisify(fs.lstat)
 
-/** @param {string} directory @param {RegExp} filter @returns {Promise<string[]>} */
-async function findFilesAsync(directory, filter) {
+/** @param {string} directory @param {RegExp} filter @param {Object.<string, number>} rejected @returns {Promise<string[]>} */
+async function findFilesAsync(directory, filter, rejected = undefined) {
     const files = [], directories = []
     for (let entry of await readdirAsync(directory)) {
         const stats = await lstatAsync(entry = path.join(directory, entry))
         if (stats.isDirectory()) {
-            directories.push(...await findFilesAsync(entry, filter))
+            directories.push(...await findFilesAsync(entry, filter, rejected))
         }
-        else if (filter?.test(entry) ?? true)
-            files.push(entry)
+        else {            
+            if (filter?.test(entry) ?? true) {
+                files.push(entry)
+            }
+            else if (rejected) {
+                const extension = path.extname(entry)
+                rejected[extension] = 1 + (rejected[extension] ?? 0)
+            }
+        }
     }
     files.push(...directories)
     return files

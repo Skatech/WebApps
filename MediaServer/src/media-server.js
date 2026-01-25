@@ -56,6 +56,7 @@ class FileGroup {
         this.roots = roots
     }
 
+    /** @type {Object.<string,number>} */ static Rejected = {}
     /** @type {FileGroup[]} */ static All = []
     static FilesTotal = 0
     static LoadDate = 0
@@ -63,7 +64,8 @@ class FileGroup {
     static loadAll() {
         FileGroup.loadAllAsync()
             .then(function () {
-                console.log(`Files cached: ${FileGroup.FilesTotal} files in ${FileGroup.All.length} groups`)
+                console.log(`Files cached: ${FileGroup.FilesTotal} files in ${FileGroup.All.length} groups, rejected:`,
+                    FileGroup.Rejected)
             })
             .catch(function (err) {
                 console.log("Files caching error:", err)
@@ -72,10 +74,11 @@ class FileGroup {
 
     static async loadAllAsync() {
         const filter = helpers.createExtensionsFilter(FileType.All.map(ft => ft.extension))
+        FileGroup.Rejected = {}
         for (let group of FileGroup.All) {
             const groupfd = []
             for (let root of group.roots) {
-                const files = await helpers.findFilesAsync(root, filter)
+                const files = await helpers.findFilesAsync(root, filter, FileGroup.Rejected)
                 groupfd.push(...files.map(fp => new FileData(group, fp, root)))
             }
             group.length = groupfd.length
