@@ -48,11 +48,12 @@ class FileGroup {
     /** @type {Object.<string, FileData>} */ files = {}
     /** @type {number} */ length = 0
 
-    /** @param {string} name @param {boolean} enabled @param {string[]} roots */
-    constructor(name, enabled, roots) {
+    /** @param {string} name @param {boolean} enabled @param {string} player @param {string[]} roots */
+    constructor(name, enabled, player, roots) {
         this.name = name
         this.code = crypto.createHash("MD5").update(this.name).digest("hex").substring(0, 8)
         this.enabled = enabled
+        this.player = player
         this.roots = roots
     }
 
@@ -257,18 +258,22 @@ function handleRequest (req, res) {
                 `<div><input type="checkbox" name="filegroup${ix}"${session.groups.includes(fg) ? " checked" : ""} /><label> ${fg.name} (${fg.length} files)</label></div>`).join("\n"))
             .replace("{FILES}", session.filtered.map(fd =>
                 `${dtr.nextFormat(fd)}<a ${fd.filetype.playable ? "" : "class=\"nonplayable\" "}href="/player-${fd.filegroup.code}${fd.filecode}">&bull; ${fd.filename}</a>`).join("\n"))
-            res.writeHead(200, { "Accept-Ranges": "bytes" }).end(html)
+            res.writeHead(200/*, { "Accept-Ranges": "bytes" }*/).end(html)
     }
     else if (url.startsWith("/player-") && req.method === "GET") {
         const match = url.match(/^\/player-([a-f\d]{8})([a-f\d]{16})$/i)
         const filedata = match ? FileGroup.All.find(fg => fg.code === match[1])?.files[match[2]] : undefined
         if (filedata) {
+            console.log(filedata.filegroup.player)
+            const mediatypes = ["video", "audio"]
             const html = pageTemplates["player.html"]
                 .replace("{TITLE}", title + ": " + filedata.filename)
                 .replace("{TRACKNAME}", filedata.filename)
                 .replace("{MIMETYPE}", filedata.filetype.mimetype)
-                .replace("{TRACKURL}", `/stream-${filedata.filegroup.code}${filedata.filecode}`)                
-                .replaceAll("{PLAYER}", filedata.filetype.mimetype.startsWith("video") ? "video" : "audio")
+                .replace("{TRACKURL}", `/stream-${filedata.filegroup.code}${filedata.filecode}`)
+                .replaceAll("{PLAYER}", mediatypes.includes(filedata.filegroup.player)
+                    ? filedata.filegroup.player
+                    : (filedata.filetype.mimetype.startsWith("video") ? "video" : "audio"))
             res.writeHead(200, { "Accept-Ranges": "bytes" }).end(html)
         }
     }
@@ -304,9 +309,9 @@ function cacheFilesSync(dictionary, directory, filesSuffix, keyPrefix = "/", enc
     }
 }
 
-/** @param {string} name @param {string[]} roots @param {boolean} [enabled=false] */
-function createGroup(name, roots, enabled = false) {
-    FileGroup.All.push(new FileGroup(name, enabled, roots))
+/** @param {string} name @param {("video" | "audio")} player @param {string[]} roots @param {boolean} [enabled=false] */
+function createGroup(name, player, roots, enabled = false) {
+    FileGroup.All.push(new FileGroup(name, enabled, player, roots))
 }
 
 /** @param {string} host @param {number} port @param {string} title */
