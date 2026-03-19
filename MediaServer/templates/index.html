@@ -23,9 +23,6 @@
             flex-direction: column;
             margin: 0.25em 0.25em;
             height: 100%;
-            /* padding: 0 0.25em; */
-            /* border: 1px solid #888; */
-            /* border-radius: 0.35em; */
         }
         h1 {
             margin: 0.5em 0;
@@ -91,6 +88,12 @@
             text-transform: uppercase;
             letter-spacing: normal;
         }
+        audio, video {
+            margin: auto;
+            display: flex;
+            max-height: 50dvh;
+            max-width: 100%;
+        }
     </style>
 </head>
 <body>
@@ -117,5 +120,35 @@
             </div>
         </div>
     </div>
+    <script type="text/javascript">
+        const datakey = "MediaServer.Data.PlayerVolume"
+
+        /** @param {PointerEvent} e*/
+        function showPlayer(e) {
+            if (e.target instanceof HTMLAnchorElement && ["audio", "video"].includes(e.target.dataset.player)) {
+                /** @type {HTMLVideoElement|HTMLAudioElement} */ let player = document.player
+                player?.parentNode.removeChild(document.player)
+                player = document.player = document.createElement(e.target.dataset.player)
+                player.controls = true
+                player.autoplay = true
+
+                player.volume = Number(localStorage.getItem(datakey) ?? "0.5")
+                player.addEventListener("volumechange", function(evt) {
+                    localStorage.setItem(datakey, evt.target.volume)
+                })
+
+                const source = document.createElement("source")
+                source.src = e.target.href
+                source.type = e.target.dataset.type
+                player.appendChild(source);                
+                
+                e.target.after(player)
+                e.preventDefault()
+            }
+        }
+
+        for(const a of document.querySelectorAll("a"))
+            a.onclick = showPlayer
+    </script>
 </body>
 </html>

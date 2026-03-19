@@ -2,7 +2,6 @@
 const path = require("path"), fs = require("fs"),
     http = require("http"), crypto = require("crypto"), helpers = require("./helpers")
 
-// const indexPageTemplate = fs.readFileSync("./templates/index.html", "utf-8")
 /** @type {Object.<string, string>} */ const pageTemplates = {}
 
 class FileType {
@@ -248,7 +247,6 @@ function handleRequest (req, res) {
     }
     else if (url === "/" && req.method === "GET") {
         const dtr = new DirectoryTracker("<div>{LASTDIR}</div>\n")
-        // const html = indexPageTemplate.replaceAll("{TITLE}", title)
         const html = pageTemplates["index.html"].replaceAll("{TITLE}", title)
             .replace("{SHOWNP}", session.shownp ? "checked " : "")
             .replace("{PCACHE}", FileGroup.FilesUpdateAvailable ? "" : "disabled ")
@@ -257,25 +255,8 @@ function handleRequest (req, res) {
             .replace("{GROUPS}", FileGroup.All.map((fg, ix) =>
                 `<div><input type="checkbox" name="filegroup${ix}"${session.groups.includes(fg) ? " checked" : ""} /><label> ${fg.name} (${fg.length} files)</label></div>`).join("\n"))
             .replace("{FILES}", session.filtered.map(fd =>
-                `${dtr.nextFormat(fd)}<a ${fd.filetype.playable ? "" : "class=\"nonplayable\" "}href="/player-${fd.filegroup.code}${fd.filecode}">&bull; ${fd.filename}</a>`).join("\n"))
-            res.writeHead(200/*, { "Accept-Ranges": "bytes" }*/).end(html)
-    }
-    else if (url.startsWith("/player-") && req.method === "GET") {
-        const match = url.match(/^\/player-([a-f\d]{8})([a-f\d]{16})$/i)
-        const filedata = match ? FileGroup.All.find(fg => fg.code === match[1])?.files[match[2]] : undefined
-        if (filedata) {
-            console.log(filedata.filegroup.player)
-            const mediatypes = ["video", "audio"]
-            const html = pageTemplates["player.html"]
-                .replace("{TITLE}", title + ": " + filedata.filename)
-                .replace("{TRACKNAME}", filedata.filename)
-                .replace("{MIMETYPE}", filedata.filetype.mimetype)
-                .replace("{TRACKURL}", `/stream-${filedata.filegroup.code}${filedata.filecode}`)
-                .replaceAll("{PLAYER}", mediatypes.includes(filedata.filegroup.player)
-                    ? filedata.filegroup.player
-                    : (filedata.filetype.mimetype.startsWith("video") ? "video" : "audio"))
+                `${dtr.nextFormat(fd)}<a ${fd.filetype.playable ? "" : "class=\"nonplayable\" "}href="/stream-${fd.filegroup.code}${fd.filecode}" data-type="${fd.filetype.mimetype}" data-player="${fd.filegroup.player}">&bull; ${fd.filename}</a>`).join("\n"))
             res.writeHead(200, { "Accept-Ranges": "bytes" }).end(html)
-        }
     }
     else if (url.startsWith("/stream-") && req.method === "GET") {
         const match = url.match(/^\/stream-([a-f\d]{8})([a-f\d]{16})$/i)
