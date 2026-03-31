@@ -87,12 +87,14 @@
             font-weight: bolder;
             text-transform: uppercase;
             letter-spacing: normal;
+            cursor: pointer;
         }
         audio, video {
-            margin: auto;
-            display: flex;
-            max-height: 50dvh;
-            max-width: 100%;
+            /* margin: auto; */
+            max-height: 33dvh;
+            width: 100%;
+            /* display: flex; */
+            /* max-width: 100%; */
         }
     </style>
 </head>
@@ -123,8 +125,7 @@
     <script type="text/javascript">
         const datakey = "MediaServer.Data.PlayerVolume"
 
-        /** @param {PointerEvent} e*/
-        function showPlayer(e) {
+        /** @param {PointerEvent} e*/ function showPlayer(e) {
             if (e.target instanceof HTMLAnchorElement && ["audio", "video"].includes(e.target.dataset.player)) {
                 /** @type {HTMLVideoElement|HTMLAudioElement} */ let player = document.player
                 player?.parentNode.removeChild(document.player)
@@ -138,17 +139,31 @@
                 })
 
                 const source = document.createElement("source")
-                source.src = e.target.href
+                source.src = e.target.getAttribute("href")
                 source.type = e.target.dataset.type
                 player.appendChild(source);                
                 
                 e.target.after(player)
                 e.preventDefault()
+
+                player.scrollIntoView({ behavior: 'smooth' })
+            }
+        }
+
+        /** @param {PointerEvent} e*/ function openFolder(e) {
+            if (e.target instanceof HTMLDivElement) {
+                console.log(e.target.innerText.replace(/^[^\\]*\\?/, "") + "\\")
+                document.querySelector("input[type=text]").value = e.target.innerText.replace(/^[^\\]*\\?/, "") + "\\"
+                document.querySelector("input[type=submit]").click()
             }
         }
 
         for(const a of document.querySelectorAll("a"))
             a.onclick = showPlayer
+
+        for(const e of document.querySelectorAll("div.link-container div"))
+            e.onclick = openFolder
+
     </script>
 </body>
 </html>

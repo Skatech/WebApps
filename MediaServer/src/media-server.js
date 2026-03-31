@@ -25,9 +25,11 @@ class FileType {
         new FileType(".avi",  "video/x-msvideo", false),
         new FileType(".mkv",  "video/x-matroska", false),
         new FileType(".flv",  "video/x-flv", false),
+        new FileType(".m4a",  "audio/mp4"),
         new FileType(".wav",  "audio/wav", false),
         new FileType(".mp3",  "audio/mpeg"),
         new FileType(".flac", "audio/flac"),
+        new FileType(".ogg",  "audio/ogg"),
         new FileType(".opus", "audio/ogg")]
 }
 
