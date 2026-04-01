@@ -122,13 +122,12 @@ class SessionData {
     /** @param {boolean} newshownp @param {string} newfilter @param {FileGroup[]} newgroups */
     updateFilter(newshownp, newfilter, newgroups) {
         this.shownp = newshownp
-        this.filter = newfilter
+        this.filter = newfilter.replace(/[\u0000-\u001F\u007F-\u009F\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, "")
         this.groups = newgroups
         this.filtered.length = 0
         if (this.filter) {
-            const regex = new RegExp(
-                this.filter.replace(/[\u0000-\u001F\u007F-\u009F\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, "")
-                    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replaceAll("\\?", ".").replaceAll("\\*", ".*"), "i")
+            const regstr = this.filter.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replaceAll("\\?", ".").replaceAll("\\*", ".*")
+            const regex = new RegExp(regstr.includes("*") ? `^${regstr}$` : regstr, "i")
             for (let group of this.groups) {
                 for(let fc in group.files) {
                     const fd = group.files[fc]

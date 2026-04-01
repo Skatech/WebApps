@@ -90,11 +90,9 @@
             cursor: pointer;
         }
         audio, video {
-            /* margin: auto; */
-            max-height: 33dvh;
+            margin: auto;
+            max-height: 90%;
             width: 100%;
-            /* display: flex; */
-            /* max-width: 100%; */
         }
     </style>
 </head>
@@ -103,14 +101,17 @@
         <div class="container">
             <h1>{TITLE}</h1>
             <form method="post" action="/" enctype="text/plain">
-                <div class="groups-container">
-                    <input type="checkbox" name="shownonplayable" {SHOWNP}><label> Show non-playable</label>
-                    <input type="checkbox" name="plancacheupdate" {PCACHE}><label> Plan cache update</label>
-                    <hr>
-                </div>
-                <div class="groups-container">
-                    {GROUPS}
-                </div>
+                <details>
+                    <summary>Options</summary>
+                    <div class="groups-container">
+                        <input type="checkbox" name="shownonplayable" {SHOWNP}><label> Show non-playable</label>
+                        <input type="checkbox" name="plancacheupdate" {PCACHE}><label> Plan cache update</label>
+                        <hr>
+                    </div>
+                    <div class="groups-container">
+                        {GROUPS}
+                    </div>
+                </details>
                 <div>
                     <input type="text" name="filter" value="{FILTER}" placeholder="File name part or wildcard" required />
                     <input type="submit" value="Search" />
@@ -152,8 +153,7 @@
 
         /** @param {PointerEvent} e*/ function openFolder(e) {
             if (e.target instanceof HTMLDivElement) {
-                console.log(e.target.innerText.replace(/^[^\\]*\\?/, "") + "\\")
-                document.querySelector("input[type=text]").value = e.target.innerText.replace(/^[^\\]*\\?/, "") + "\\"
+                document.querySelector("input[type=text]").value = e.target.innerText.replace(/^[^\\]*\\?/, "") + "\\*"
                 document.querySelector("input[type=submit]").click()
             }
         }
