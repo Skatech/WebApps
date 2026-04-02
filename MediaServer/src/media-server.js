@@ -265,7 +265,7 @@ function handleRequest (req, res) {
         if (filedata) {
             try {
                 streamFile(req, res, filedata)
-                console.log(req.socket.remoteAddress, "->", filedata.filename, req.url, req.headers?.range ?? "")
+                // console.log(req.socket.remoteAddress, "->", filedata.filename, req.url, req.headers?.range ?? "")
             }
             catch (err) {
                 res.writeHead(500, "Internal Server Error").end()

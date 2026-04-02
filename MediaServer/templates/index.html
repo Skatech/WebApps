@@ -6,6 +6,9 @@
     <link rel="icon" href="data:,">
     <title>{TITLE}</title>
     <style>
+        :root {
+            color-scheme: light dark;
+        }
         body {
             margin: 0;
             padding: 0;
@@ -70,7 +73,8 @@
             word-break: break-all;
         }
         div.link-container a:nth-child(even) {
-            background-color: #F0F0F0;
+            background-color: light-dark(#F0F0F0, #0F0F0F);
+            /* background-color: #F0F0F0; */
         }
         div.link-container a:hover {
             text-decoration: underline;
