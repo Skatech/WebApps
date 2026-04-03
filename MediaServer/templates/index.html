@@ -6,7 +6,7 @@
     <link rel="icon" href="data:,">
     <title>{TITLE}</title>
     <style>
-        :root {
+        html {
             color-scheme: light dark;
         }
         body {
@@ -73,8 +73,7 @@
             word-break: break-all;
         }
         div.link-container a:nth-child(even) {
-            background-color: light-dark(#F0F0F0, #0F0F0F);
-            /* background-color: #F0F0F0; */
+            background-color: light-dark(hsl(from Canvas h s calc(l - 4)), hsl(from Canvas h s calc(l + 4)));
         }
         div.link-container a:hover {
             text-decoration: underline;
@@ -157,7 +156,8 @@
 
         /** @param {PointerEvent} e*/ function openFolder(e) {
             if (e.target instanceof HTMLDivElement) {
-                document.querySelector("input[type=text]").value = e.target.innerText.replace(/^[^\\]*\\?/, "") + "\\*"
+                const dirname = e.target.innerText.replace(/^[^\\]*\\?/, "")
+                document.querySelector("input[type=text]").value = dirname ? dirname + "\\*" : "*"
                 document.querySelector("input[type=submit]").click()
             }
         }
