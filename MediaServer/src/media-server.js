@@ -1,6 +1,7 @@
 "use strict"
 const path = require("path"), fs = require("fs"),
-    http = require("http"), crypto = require("crypto"), helpers = require("./helpers")
+    http = require("http"), crypto = require("crypto"),
+    helpers = require("./helpers"), bauth = require("./basic-auth")
 
 /** @type {Object.<string, string>} */ const pageTemplates = {}
 
@@ -96,11 +97,14 @@ class FileGroup {
     }
 
     static get FilesUpdateAvailable() {
-        return Date.now() - FileGroup.LoadDate > 5 * 60000;
+        return Date.now() - FileGroup.LoadDate > 60000;
     }
 }
 
+/** @typedef {Object} UserIdent @property {string} username @property {string} password */
+
 class SessionData {
+    /** @type {UserIdent|undefined} */ identity = undefined
     /** @type {FileData[]} */ filtered = []
     /** @type {string} */ filter = "*"
     /** @type {boolean} */ shownp = false
@@ -112,6 +116,7 @@ class SessionData {
     }
 
     /** @type {Object.<string, SessionData>} */ static All = {}
+    /** @type {Object.<string, UserIdent} */ static Idents = {}
 
     /** @param {string} sessionid @returns {SessionData} */
     static findOrCreate(sessionid) {
@@ -228,6 +233,19 @@ function handleRequest (req, res) {
     const sessid = provideSessionID(req, res)
     const session = SessionData.findOrCreate(sessid)
 
+    if (!session.identity && !req.socket.remoteAddress.startsWith("192.168.")) {
+        if (session.identity = bauth.tryAuthorize(req, SessionData.Idents)) {
+            console.log("Request from WAN: ", req.socket.remoteAddress, url, "Authentified:", session.identity.username)
+        }
+        else {
+            const message = req.headers.authorization ? "Invalid credentials" : "Authentication required"
+            bauth.setAuthenticateHeader(res, "MediaServerRealm", message)
+            res.end(pageTemplates["error.html"].replaceAll("{TITLE}", title).replace("{MESSAGE}", message))
+            console.log("Request from WAN: ", req.socket.remoteAddress, url, message)
+            return 
+        }
+    }
+
     if (url === "/" && req.method === "POST") {
         let body = ""
         const tmr = setTimeout(() => reject(), 250)
@@ -236,8 +254,17 @@ function handleRequest (req, res) {
             clearTimeout(tmr)
             const args = decodeArgumentString(decodeURIComponent(body))
             if (args?.plancacheupdate == "on" && FileGroup.FilesUpdateAvailable) {
-                console.log(req.socket.remoteAddress, "FILES RECACHE REQUEST ACCEPTED")
-                FileGroup.loadAll()
+                if (session.identity || (session.identity = bauth.tryAuthorize(req, SessionData.Idents))) {
+                    console.log("Request to update cache: ", req.socket.remoteAddress, "from", session.identity.username, "ACCEPTED")
+                    FileGroup.loadAll()
+                }
+                else {
+                    const message = req.headers.authorization ? "Invalid credentials" : "Authentication required"
+                    bauth.setAuthenticateHeader(res, "MediaServerRealm", message)
+                    res.end(pageTemplates["error.html"].replaceAll("{TITLE}", title).replace("{MESSAGE}", message))
+                    console.log("Request to update cache: ", req.socket.remoteAddress, url, message)
+                    return
+                }
             }
             const shownp = args?.shownonplayable == "on"
             const filter = args?.filter ?? session.filter
@@ -296,6 +323,13 @@ function createGroup(name, player, roots, enabled = false) {
     FileGroup.All.push(new FileGroup(name, enabled, player, roots))
 }
 
+/** @param {string} username @param {string} password */
+function createIdent(username, password) {
+    if(!/^\w+$/.test(username) || SessionData.Idents[username])
+        throw new Error("Identity creation failed")
+    SessionData.Idents[username] = { username, password }
+}
+
 /** @param {string} host @param {number} port @param {string} title */
 function startServer(host, port, title) {
     cacheFilesSync(pageTemplates, "./templates", ".html", "", "utf-8")
@@ -304,10 +338,11 @@ function startServer(host, port, title) {
     global.title = title
     FileGroup.loadAll()
     http.createServer(handleRequest).listen(port, host)
-    console.log(`Server '${title}' running at http://${host}:${port}`)        
+    console.log(new Date(), `Server '${title}' running at http://${host}:${port}`)        
 }
 
 module.exports = {
-    createGroup : createGroup,
-    startServer : startServer
+    createGroup,
+    createIdent,
+    startServer
 }

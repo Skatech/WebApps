@@ -76,7 +76,10 @@
             background-color: light-dark(hsl(from Canvas h s calc(l - 4)), hsl(from Canvas h s calc(l + 4)));
         }
         div.link-container a:hover {
-            text-decoration: underline;
+            color: Canvas;
+            background-color: color-mix(CanvasText, transparent 25%);
+            /* text-decoration: underline; */
+            /* background-color: color-mix(Canvas, green 12%); */
         }
         div.link-container a.nonplayable {
             color: #990000;

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
+    <title>{TITLE}</title>
+    <style>
+        html {
+            color-scheme: light dark;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Consolas;
+            font-size: 1em;
+            letter-spacing: -0.04em;
+        }
+        div.frame {
+            margin: 0 auto;
+            max-width: min(32em, 100vw);
+            height: calc(100dvh - 0.55em);
+        }
+        div.container {
+            display: flex;
+            flex-direction: column;
+            margin: 0.25em 0.25em;
+            height: 100%;
+        }
+        h1 {
+            margin: 0.5em 0;
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 400;
+        }
+        h4 {
+            text-align: center;  
+            margin: 2em 0 0.5em 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="frame">
+        <div class="container">
+            <h1>{TITLE}</h1>
+            <h4>{MESSAGE}</h4>
+        </div>
+    </div>
+</body>
+</html>
